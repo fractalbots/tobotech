@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROBOTECH STORE FRACTAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #02020a;
+    --bg2: #070712;
+    --cyan: #00e5ff;
+    --cyan2: #00b8d4;
+    --green: #39ff14;
+    --orange: #ff6b2b;
+    --purple: #a855f7;
+    --glass: rgba(0,229,255,0.04);
+    --glass-border: rgba(0,229,255,0.15);
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+  /* CANVAS BG */
+  #bg-canvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+  #root { position: relative; z-index:1; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
+
+  /* SCAN LINE */
+  body::after {
+    content:'';
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px);
+    pointer-events:none; z-index:9999;
+    animation: scanMove 8s linear infinite;
+  }
+  @keyframes scanMove { 0%{background-position:0 0} 100%{background-position:0 100px} }
+
+  /* NAV */
+  .nav {
+    position: fixed; top:0; left:0; right:0; z-index: 1000;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px;
+    height: 70px;
+    background: rgba(2,2,10,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .nav-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 0.15em;
+    text-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,229,255,0.3);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--cyan);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    position: relative;
+    animation: logoPulse 2s ease-in-out infinite;
+    box-shadow: 0 0 15px rgba(0,229,255,0.4), inset 0 0 10px rgba(0,229,255,0.1);
+  }
+  @keyframes logoPulse { 0%,100%{box-shadow:0 0 15px rgba(0,229,255,0.4), inset 0 0 10px rgba(0,229,255,0.1)} 50%{box-shadow:0 0 30px rgba(0,229,255,0.8), inset 0 0 20px rgba(0,229,255,0.2)} }
+  .nav-links { display:flex; gap:30px; align-items:center; }
+  .nav-link {
+    font-family:'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    cursor: pointer;
+    background: none; border: none;
+  }
+  .nav-link:hover { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
+  .btn-login {
+    background: transparent;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 8px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-login::before {
+    content:''; position:absolute; inset:0;
+    background: var(--cyan);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  .btn-login:hover::before { transform: translateX(0); }
+  .btn-login:hover { color: var(--bg); }
+  .btn-login span { position:relative; z-index:1; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 100px 40px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid {
+    position: absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  }
+  .hero-content { text-align:center; max-width:900px; position:relative; }
+  .hero-badge {
+    display: inline-flex; align-items:center; gap:8px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    padding: 6px 16px;
+    font-family:'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--cyan);
+    letter-spacing: 0.2em;
+    margin-bottom: 30px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .badge-dot { width:6px; height:6px; background:var(--green); border-radius:50%; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .hero-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2.2rem, 6vw, 5rem);
+    font-weight: 900;
+    line-height: 1.05;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .hero-title span.glow {
+    color: var(--cyan);
+    text-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,229,255,0.4);
+  }
+  .hero-title span.fractal {
+    display:block;
+    font-size: 0.5em;
+    letter-spacing: 0.5em;
+    color: var(--orange);
+    text-shadow: 0 0 20px var(--orange);
+    margin-top: 4px;
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 560px;
+    margin: 24px auto 40px;
+    line-height: 1.7;
+    font-weight:400;
+  }
+  .hero-sub strong { color: var(--cyan); font-weight:600; }
+  .hero-cta { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+  .btn-primary {
+    background: var(--cyan);
+    color: var(--bg);
+    border: none;
+    padding: 14px 32px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.3s;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    box-shadow: 0 0 20px rgba(0,229,255,0.4);
+  }
+  .btn-primary:hover { background: #fff; box-shadow: 0 0 40px rgba(0,229,255,0.7); transform:translateY(-2px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 14px 32px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.3s;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .btn-secondary:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex; justify-content:center; gap:0;
+    padding: 0 40px;
+    border-top: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(0,229,255,0.02);
+    position: relative; z-index:2;
+  }
+  .stat-item {
+    flex:1; max-width:200px;
+    padding: 24px 20px;
+    text-align:center;
+    border-right: 1px solid var(--glass-border);
+  }
+  .stat-item:last-child { border-right:none; }
+  .stat-num {
+    font-family:'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight:900;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,229,255,0.5);
+    display:block;
+  }
+  .stat-label { font-size:0.75rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; }
+
+  /* CATEGORIES */
+  .section { padding: 80px 40px; max-width: 1400px; margin: 0 auto; }
+  .section-header { margin-bottom: 50px; }
+  .section-tag {
+    font-family:'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--cyan);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display:block;
+  }
+  .section-tag::before { content:'// '; opacity:0.5; }
+  .section-title {
+    font-family:'Orbitron', sans-serif;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight:900;
+    color:#fff;
+    line-height:1.1;
+  }
+  .section-title em { font-style:normal; color:var(--cyan); }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .cat-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    padding: 24px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition: all 0.3s;
+    position:relative;
+    overflow:hidden;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  .cat-card::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.08), transparent);
+    opacity:0; transition:0.3s;
+  }
+  .cat-card:hover { border-color: var(--cyan); transform:translateY(-4px); box-shadow: 0 8px 30px rgba(0,229,255,0.15); }
+  .cat-card:hover::before { opacity:1; }
+  .cat-card.active { border-color: var(--cyan); background: rgba(0,229,255,0.08); }
+  .cat-icon { font-size:1.8rem; margin-bottom:10px; display:block; }
+  .cat-name { font-family:'Rajdhani', sans-serif; font-size:0.82rem; font-weight:700; color:var(--text); letter-spacing:0.05em; text-transform:uppercase; }
+
+  /* PRODUCTS GRID */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .product-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    transition: all 0.4s;
+    position:relative;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  }
+  .product-card::after {
+    content:''; position:absolute; top:0; right:0;
+    width:16px; height:16px;
+    background: var(--cyan);
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    opacity:0.6;
+  }
+  .product-card:hover { border-color: var(--cyan); transform:translateY(-6px); box-shadow: 0 16px 40px rgba(0,229,255,0.1); }
+  .product-img {
+    width:100%; height:200px;
+    object-fit:cover;
+    background: linear-gradient(135deg, #0a0a1a, #111130);
+    display:flex; align-items:center; justify-content:center;
+    font-size:3rem;
+    position:relative;
+    overflow:hidden;
+  }
+  .product-img img { width:100%; height:100%; object-fit:cover; }
+  .product-img .placeholder { opacity:0.3; }
+  .stock-badge {
+    position:absolute; top:12px; left:12px;
+    padding: 3px 10px;
+    font-family:'Share Tech Mono', monospace;
+    font-size:0.68rem;
+    letter-spacing:0.1em;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  }
+  .stock-ok { background:rgba(57,255,20,0.15); border:1px solid rgba(57,255,20,0.4); color:var(--green); }
+  .stock-low { background:rgba(255,107,43,0.15); border:1px solid rgba(255,107,43,0.4); color:var(--orange); }
+  .stock-out { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#ef4444; }
+  .product-body { padding: 20px; }
+  .product-cat { font-size:0.7rem; color:var(--cyan); letter-spacing:0.15em; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+  .product-name { font-family:'Rajdhani', sans-serif; font-size:1.15rem; font-weight:700; color:#fff; line-height:1.3; margin-bottom:8px; }
+  .product-desc { font-size:0.82rem; color:var(--muted); line-height:1.5; margin-bottom:16px; min-height:38px; }
+  .product-footer { display:flex; align-items:center; justify-content:space-between; }
+  .product-price {
+    font-family:'Orbitron', sans-serif;
+    font-size:1.4rem; font-weight:900;
+    color: var(--cyan);
+    text-shadow: 0 0 15px rgba(0,229,255,0.4);
+  }
+  .price-currency { font-size:0.7em; opacity:0.7; }
+  .stock-info { font-family:'Share Tech Mono', monospace; font-size:0.72rem; color:var(--muted); text-align:right; }
+  .stock-num { display:block; font-size:1rem; color:var(--text); font-weight:700; }
+
+  /* PAYMENT & SHIPPING */
+  .info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+  .info-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    padding:30px;
+    position:relative;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .info-card-icon { font-size:2rem; margin-bottom:16px; display:block; }
+  .info-card-title { font-family:'Orbitron', sans-serif; font-size:0.9rem; font-weight:700; color:var(--cyan); margin-bottom:10px; letter-spacing:0.08em; }
+  .info-card-text { font-size:0.9rem; color:var(--muted); line-height:1.7; }
+  .info-card-text strong { color:var(--text); }
+  .tag-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.2);
+    padding:4px 12px; font-size:0.78rem; color:var(--cyan); margin:4px 4px 0 0;
+    font-family:'Share Tech Mono', monospace;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
+    z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background: #090915;
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    width:100%; max-width:480px;
+    position:relative;
+    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    animation: slideUp 0.3s;
+  }
+  @keyframes slideUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal-close {
+    position:absolute; top:16px; right:16px;
+    background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.2rem;
+    width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    transition:0.2s;
+  }
+  .modal-close:hover { color:var(--cyan); }
+  .modal-title { font-family:'Orbitron', sans-serif; font-size:1.1rem; font-weight:900; color:#fff; margin-bottom:6px; }
+  .modal-sub { font-size:0.85rem; color:var(--muted); margin-bottom:28px; }
+  .form-group { margin-bottom:18px; }
+  .form-label { display:block; font-size:0.75rem; font-weight:700; color:var(--cyan); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; font-family:'Share Tech Mono',monospace; }
+  .form-input {
+    width:100%; background: rgba(0,229,255,0.04); border:1px solid var(--glass-border);
+    color:#fff; padding:12px 16px; font-family:'Rajdhani',sans-serif; font-size:1rem;
+    outline:none; transition:0.3s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .form-input:focus { border-color:var(--cyan); box-shadow:0 0 15px rgba(0,229,255,0.1); }
+  .form-input::placeholder { color:var(--muted); }
+  textarea.form-input { resize:vertical; min-height:80px; }
+  select.form-input { cursor:pointer; }
+  select.form-input option { background:#090915; }
+  .btn-submit {
+    width:100%; background:var(--cyan); color:var(--bg); border:none;
+    padding:14px; font-family:'Orbitron',sans-serif; font-size:0.8rem; font-weight:700;
+    letter-spacing:0.12em; cursor:pointer; transition:0.3s; margin-top:8px;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .btn-submit:hover { background:#fff; box-shadow:0 0 30px rgba(0,229,255,0.4); }
+  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
+  .error-msg { color:#ef4444; font-size:0.82rem; margin-top:10px; font-family:'Share Tech Mono',monospace; }
+  .success-msg { color:var(--green); font-size:0.82rem; margin-top:10px; font-family:'Share Tech Mono',monospace; }
+
+  /* ADMIN PANEL */
+  .admin-panel { padding:100px 40px 60px; max-width:1400px; margin:0 auto; }
+  .admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; flex-wrap:wrap; gap:16px; }
+  .admin-title { font-family:'Orbitron',sans-serif; font-size:1.6rem; font-weight:900; color:#fff; }
+  .admin-title span { color:var(--cyan); }
+  .admin-actions { display:flex; gap:12px; }
+  .btn-add {
+    background:var(--orange); color:#fff; border:none; padding:10px 24px;
+    font-family:'Orbitron',sans-serif; font-size:0.72rem; font-weight:700;
+    letter-spacing:0.1em; cursor:pointer; transition:0.3s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-add:hover { background:#ff8c5a; box-shadow:0 0 20px rgba(255,107,43,0.4); }
+  .btn-logout {
+    background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.1);
+    padding:10px 20px; font-family:'Orbitron',sans-serif; font-size:0.7rem;
+    cursor:pointer; transition:0.3s;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .btn-logout:hover { color:#ef4444; border-color:#ef4444; }
+
+  .admin-table-wrap { overflow-x:auto; }
+  .admin-table { width:100%; border-collapse:collapse; }
+  .admin-table th {
+    font-family:'Share Tech Mono',monospace; font-size:0.7rem; letter-spacing:0.15em;
+    text-transform:uppercase; color:var(--cyan); padding:12px 16px; text-align:left;
+    border-bottom:1px solid var(--glass-border); white-space:nowrap;
+  }
+  .admin-table td {
+    padding:14px 16px; font-size:0.9rem; color:var(--text);
+    border-bottom:1px solid rgba(0,229,255,0.06); vertical-align:middle;
+  }
+  .admin-table tr:hover td { background:rgba(0,229,255,0.02); }
+  .admin-table img { width:48px; height:48px; object-fit:cover; border:1px solid var(--glass-border); }
+  .btn-edit {
+    background:rgba(0,229,255,0.1); border:1px solid rgba(0,229,255,0.3);
+    color:var(--cyan); padding:5px 12px; font-size:0.72rem; cursor:pointer;
+    transition:0.2s; font-family:'Share Tech Mono',monospace;
+  }
+  .btn-edit:hover { background:rgba(0,229,255,0.2); }
+  .btn-delete {
+    background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+    color:#ef4444; padding:5px 12px; font-size:0.72rem; cursor:pointer;
+    transition:0.2s; font-family:'Share Tech Mono',monospace; margin-left:6px;
+  }
+  .btn-delete:hover { background:rgba(239,68,68,0.2); }
+
+  /* FOOTER */
+  footer {
+    border-top:1px solid var(--glass-border);
+    padding:40px;
+    text-align:center;
+    position:relative;
+  }
+  .footer-logo { font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:900; color:var(--cyan); margin-bottom:10px; text-shadow:0 0 20px rgba(0,229,255,0.4); }
+  .footer-text { font-size:0.82rem; color:var(--muted); }
+
+  /* LOADING */
+  .loader { display:flex; gap:6px; justify-content:center; padding:60px; }
+  .loader-dot { width:8px; height:8px; background:var(--cyan); border-radius:50%; animation:loaderBounce 0.8s ease-in-out infinite; }
+  .loader-dot:nth-child(2){animation-delay:0.15s}
+  .loader-dot:nth-child(3){animation-delay:0.3s}
+  @keyframes loaderBounce{0%,100%{transform:translateY(0);opacity:0.4}50%{transform:translateY(-10px);opacity:1}}
+
+  /* RESPONSIVE */
+  @media(max-width:768px) {
+    .nav { padding:0 20px; }
+    .nav-links { display:none; }
+    .hero { padding:100px 20px 60px; }
+    .section { padding:60px 20px; }
+    .stats-bar { flex-wrap:wrap; }
+    .stat-item { flex:1 1 50%; border-right:none; border-bottom:1px solid var(--glass-border); }
+  }
+
+  /* SETUP WARNING */
+  .setup-banner {
+    background:rgba(255,107,43,0.08); border:1px solid rgba(255,107,43,0.3);
+    padding:16px 24px; margin-bottom:24px;
+    font-family:'Share Tech Mono',monospace; font-size:0.8rem; color:var(--orange);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:500px){ .form-row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="root"></div>
+
+<script type="text/babel">
+// ========== SUPABASE CONFIG ==========
+// IMPORTANT: Replace with your Supabase credentials
+// 1. Go to https://supabase.com → New Project
+// 2. Settings → API → copy URL and anon key
+// 3. Run the SQL below in Supabase SQL Editor:
+/*
+  create table products (
+    id uuid default gen_random_uuid() primary key,
+    name text not null,
+    description text default '',
+    category text default 'General',
+    price decimal(10,2) not null default 0,
+    stock integer not null default 0,
+    image_url text default '',
+    created_at timestamp with time zone default now()
+  );
+  alter table products enable row level security;
+  create policy "Public read" on products for select using (true);
+  create policy "Auth write" on products for all using (auth.role() = 'authenticated');
+*/
+const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
+const SUPABASE_ANON_KEY = 'TU-ANON-KEY-AQUI';
+
+const isConfigured = !SUPABASE_URL.includes('TU-PROYECTO');
+const supabase = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// ========== CANVAS BACKGROUND ==========
+function initCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [], nodes = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+      this.vx = (Math.random() - 0.5) * 0.3;
+      this.vy = (Math.random() - 0.5) * 0.3;
+      this.life = Math.random();
+      this.maxLife = 0.5 + Math.random() * 0.5;
+      this.size = Math.random() * 2;
+      this.hue = Math.random() > 0.5 ? 191 : Math.random() > 0.5 ? 260 : 20;
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      this.life -= 0.003;
+      if (this.life <= 0 || this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+    }
+    draw() {
+      const alpha = Math.sin(this.life * Math.PI / this.maxLife) * 0.6;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = `hsl(${this.hue}, 100%, 60%)`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+  // Circuit nodes
+  for (let i = 0; i < 15; i++) {
+    nodes.push({ x: Math.random() * W, y: Math.random() * H, r: 2 + Math.random() * 3 });
+  }
+
+  function drawCircuit() {
+    ctx.globalAlpha = 0.03;
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+        if (d < 250) {
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          // L-shaped circuit lines
+          ctx.lineTo(nodes[i].x, nodes[j].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 0.06;
+    nodes.forEach(n => {
+      ctx.strokeStyle = '#00e5ff';
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.stroke();
+    });
+  }
+
+  let t = 0;
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Radial glow
+    const grd = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.6);
+    grd.addColorStop(0, 'rgba(0,229,255,0.03)');
+    grd.addColorStop(1, 'transparent');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    drawCircuit();
+    particles.forEach(p => { p.update(); p.draw(); });
+    ctx.globalAlpha = 1;
+    t++;
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ========== CATEGORIES ==========
+const CATEGORIES = [
+  { id: 'all', name: 'Todos', icon: '⚡' },
+  { id: 'Raspberry Pi', name: 'Raspberry Pi', icon: '🍓' },
+  { id: 'Arduino', name: 'Arduino', icon: '🔵' },
+  { id: 'Sensores', name: 'Sensores', icon: '📡' },
+  { id: 'Motores', name: 'Motores', icon: '⚙️' },
+  { id: 'Pantallas', name: 'Pantallas', icon: '🖥️' },
+  { id: 'Baterías', name: 'Baterías', icon: '🔋' },
+  { id: 'Robots', name: 'Robots', icon: '🤖' },
+  { id: 'STM32', name: 'STM32', icon: '💎' },
+  { id: 'Semiconductores', name: 'Semiconductores', icon: '🔬' },
+  { id: 'Programadoras', name: 'Programadoras', icon: '💻' },
+  { id: 'Básicos', name: 'Básicos', icon: '🔩' },
+];
+
+// Demo products for when Supabase is not configured
+const DEMO_PRODUCTS = [
+  { id:'1', name:'Raspberry Pi 5 4GB', description:'El más potente SBC para proyectos avanzados de IA y robótica.', category:'Raspberry Pi', price:89999, stock:12, image_url:'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80' },
+  { id:'2', name:'Arduino Mega 2560 Rev3', description:'Microcontrolador ATmega2560 con 54 pines digitales I/O y 16 analógicos.', category:'Arduino', price:8500, stock:3, image_url:'https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&q=80' },
+  { id:'3', name:'Sensor Ultrasónico HC-SR04', description:'Medición de distancia 2cm a 400cm. Ideal para robots evitadores de obstáculos.', category:'Sensores', price:1200, stock:0, image_url:'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&q=80' },
+  { id:'4', name:'Motor Paso a Paso NEMA 17', description:'Torque 0.4 Nm, 1.7A. Perfecto para impresoras 3D y CNC.', category:'Motores', price:6800, stock:8, image_url:'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&q=80' },
+  { id:'5', name:'STM32F103C8T6 Blue Pill', description:'ARM Cortex-M3 72MHz, 64KB Flash. El favorito de proyectos embebidos.', category:'STM32', price:4200, stock:20, image_url:'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80' },
+  { id:'6', name:'Pantalla OLED 0.96" I2C', description:'128x64 píxeles, protocolo I2C, compatible con Arduino y ESP32.', category:'Pantallas', price:2800, stock:15, image_url:'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80' },
+];
+
+// ========== STOCK BADGE ==========
+function StockBadge({ stock }) {
+  if (stock === 0) return <span className="stock-badge stock-out">SIN STOCK</span>;
+  if (stock <= 5) return <span className="stock-badge stock-low">ÚLTIMAS {stock}</span>;
+  return <span className="stock-badge stock-ok">STOCK: {stock}</span>;
+}
+
+// ========== PRODUCT CARD ==========
+function ProductCard({ product }) {
+  const fmt = (n) => new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0 }).format(n);
+  return (
+    <div className="product-card">
+      <div className="product-img">
+        {product.image_url
+          ? <img src={product.image_url} alt={product.name} onError={e => { e.target.style.display='none'; }} />
+          : <span className="placeholder">🔌</span>
+        }
+        <StockBadge stock={product.stock} />
+      </div>
+      <div className="product-body">
+        <div className="product-cat">{product.category}</div>
+        <div className="product-name">{product.name}</div>
+        <div className="product-desc">{product.description}</div>
+        <div className="product-footer">
+          <div className="product-price">
+            <span className="price-currency">$</span>{fmt(product.price)}
+          </div>
+          <div className="stock-info">
+            <span className="stock-num">{product.stock}</span>
+            disponibles
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========== LOGIN MODAL ==========
+function LoginModal({ onClose, onLogin }) {
+  const [email, setEmail] = React.useState('');
+  const [pass, setPass] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    if (!supabase) {
+      // Demo login
+      if (email === 'admin@robotech.com' && pass === 'admin123') {
+        onLogin({ email });
+      } else {
+        setError('ERROR: Credenciales inválidas. [DEMO: admin@robotech.com / admin123]');
+      }
+      setLoading(false);
+      return;
+    }
+    const { data, error: err } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (err) { setError(`ERROR: ${err.message}`); }
+    else { onLogin(data.user); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal">
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-title">ACCESO ADMIN</div>
+        <div className="modal-sub">Panel de gestión · Robotech Store Fractal</div>
+        {!isConfigured && (
+          <div className="setup-banner">
+            ⚠ MODO DEMO — Supabase no configurado.<br/>
+            Use: admin@robotech.com / admin123
+          </div>
+        )}
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" placeholder="admin@robotech.com" value={email} onChange={e=>setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Contraseña</label>
+            <input className="form-input" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} required />
+          </div>
+          {error && <div className="error-msg">{error}</div>}
+          <button className="btn-submit" type="submit" disabled={loading}>
+            {loading ? 'VERIFICANDO...' : 'INGRESAR AL PANEL'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ========== PRODUCT FORM MODAL ==========
+function ProductModal({ product, onClose, onSave }) {
+  const [form, setForm] = React.useState({
+    name: product?.name || '',
+    description: product?.description || '',
+    category: product?.category || 'Arduino',
+    price: product?.price || '',
+    stock: product?.stock || '',
+    image_url: product?.image_url || '',
+  });
+  const [loading, setLoading] = React.useState(false);
+  const [msg, setMsg] = React.useState('');
+  const isEdit = !!product?.id;
+
+  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setLoading(true); setMsg('');
+    const data = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock) };
+    let err;
+    if (!supabase) {
+      // Demo mode
+      onSave({ ...data, id: product?.id || String(Date.now()) });
+      setLoading(false); onClose(); return;
+    }
+    if (isEdit) {
+      const res = await supabase.from('products').update(data).eq('id', product.id);
+      err = res.error;
+    } else {
+      const res = await supabase.from('products').insert([data]);
+      err = res.error;
+    }
+    if (err) { setMsg(`ERROR: ${err.message}`); }
+    else { onSave(); onClose(); }
+    setLoading(false);
+  };
+
+  const cats = CATEGORIES.slice(1).map(c => c.id);
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal" style={{maxWidth:'600px'}}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-title">{isEdit ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO'}</div>
+        <div className="modal-sub">Robotech Store Fractal · Gestión de inventario</div>
+        <form onSubmit={handleSave}>
+          <div className="form-group">
+            <label className="form-label">Nombre del Producto</label>
+            <input className="form-input" placeholder="Ej: Arduino Uno R3" value={form.name} onChange={e=>set('name',e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Descripción</label>
+            <textarea className="form-input" placeholder="Describe el producto..." value={form.description} onChange={e=>set('description',e.target.value)} />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Categoría</label>
+              <select className="form-input" value={form.category} onChange={e=>set('category',e.target.value)}>
+                {cats.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Precio (ARS $)</label>
+              <input className="form-input" type="number" placeholder="0.00" min="0" step="0.01" value={form.price} onChange={e=>set('price',e.target.value)} required />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Stock (unidades)</label>
+              <input className="form-input" type="number" placeholder="0" min="0" value={form.stock} onChange={e=>set('stock',e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">URL de Imagen</label>
+              <input className="form-input" placeholder="https://..." value={form.image_url} onChange={e=>set('image_url',e.target.value)} />
+            </div>
+          </div>
+          {msg && <div className="error-msg">{msg}</div>}
+          <button className="btn-submit" type="submit" disabled={loading}>
+            {loading ? 'GUARDANDO...' : isEdit ? '✓ ACTUALIZAR PRODUCTO' : '+ AGREGAR PRODUCTO'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ========== ADMIN PANEL ==========
+function AdminPanel({ user, products, onLogout, onRefresh }) {
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [editProduct, setEditProduct] = React.useState(null);
+  const [localProducts, setLocalProducts] = React.useState(products);
+
+  React.useEffect(() => { setLocalProducts(products); }, [products]);
+
+  const handleDelete = async (id) => {
+    if (!confirm('¿Eliminar este producto?')) return;
+    if (!supabase) {
+      setLocalProducts(p => p.filter(x => x.id !== id)); return;
+    }
+    await supabase.from('products').delete().eq('id', id);
+    onRefresh();
+  };
+
+  const fmt = (n) => new Intl.NumberFormat('es-AR').format(n);
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-header">
+        <div>
+          <div style={{fontFamily:'Share Tech Mono',fontSize:'0.72rem',color:'var(--cyan)',marginBottom:'6px'}}>// PANEL DE ADMINISTRACIÓN</div>
+          <div className="admin-title">GESTIÓN DE <span>INVENTARIO</span></div>
+          <div style={{fontSize:'0.82rem',color:'var(--muted)',marginTop:'4px'}}>Conectado como: {user.email}</div>
+        </div>
+        <div className="admin-actions">
+          <button className="btn-add" onClick={() => setShowAdd(true)}>+ NUEVO PRODUCTO</button>
+          <button className="btn-logout" onClick={onLogout}>⏻ SALIR</button>
+        </div>
+      </div>
+
+      {!isConfigured && (
+        <div className="setup-banner" style={{marginBottom:'24px'}}>
+          ⚠ MODO DEMO — Configure Supabase para persistir datos reales.<br/>
+          Edite SUPABASE_URL y SUPABASE_ANON_KEY en el código fuente.
+        </div>
+      )}
+
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>IMAGEN</th>
+              <th>NOMBRE</th>
+              <th>CATEGORÍA</th>
+              <th>PRECIO</th>
+              <th>STOCK</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            {localProducts.length === 0 && (
+              <tr><td colSpan="6" style={{textAlign:'center',padding:'40px',color:'var(--muted)'}}>
+                No hay productos. Agrega el primero →
+              </td></tr>
+            )}
+            {localProducts.map(p => (
+              <tr key={p.id}>
+                <td>
+                  {p.image_url
+                    ? <img src={p.image_url} alt="" onError={e=>e.target.style.display='none'} />
+                    : <div style={{width:48,height:48,background:'var(--glass)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',border:'1px solid var(--glass-border)'}}>🔌</div>
+                  }
+                </td>
+                <td style={{fontWeight:600,maxWidth:200}}>{p.name}</td>
+                <td><span className="tag-pill">{p.category}</span></td>
+                <td style={{fontFamily:'Orbitron,monospace',color:'var(--cyan)',fontWeight:700}}>$ {fmt(p.price)}</td>
+                <td>
+                  <span style={{
+                    fontFamily:'Share Tech Mono,monospace',
+                    color: p.stock === 0 ? '#ef4444' : p.stock <= 5 ? 'var(--orange)' : 'var(--green)',
+                    fontWeight:700
+                  }}>{p.stock}</span>
+                </td>
+                <td>
+                  <button className="btn-edit" onClick={() => setEditProduct(p)}>EDITAR</button>
+                  <button className="btn-delete" onClick={() => handleDelete(p.id)}>BORRAR</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && (
+        <ProductModal
+          onClose={() => setShowAdd(false)}
+          onSave={(np) => {
+            if (np) setLocalProducts(p => [np, ...p]);
+            else onRefresh();
+          }}
+        />
+      )}
+      {editProduct && (
+        <ProductModal
+          product={editProduct}
+          onClose={() => setEditProduct(null)}
+          onSave={(np) => {
+            if (np) setLocalProducts(p => p.map(x => x.id === np.id ? np : x));
+            else onRefresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ========== MAIN APP ==========
+function App() {
+  const [view, setView] = React.useState('store'); // 'store' | 'admin'
+  const [showLogin, setShowLogin] = React.useState(false);
+  const [adminUser, setAdminUser] = React.useState(null);
+  const [products, setProducts] = React.useState(DEMO_PRODUCTS);
+  const [loading, setLoading] = React.useState(false);
+  const [activeCategory, setActiveCategory] = React.useState('all');
+  const [search, setSearch] = React.useState('');
+
+  // Load products
+  const fetchProducts = React.useCallback(async () => {
+    if (!supabase) { setProducts(DEMO_PRODUCTS); return; }
+    setLoading(true);
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (!error && data) setProducts(data);
+    setLoading(false);
+  }, []);
+
+  React.useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Canvas init
+  React.useEffect(() => { initCanvas(); }, []);
+
+  // Auth check
+  React.useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setAdminUser(session.user);
+    });
+  }, []);
+
+  const handleLogin = (user) => {
+    setAdminUser(user);
+    setShowLogin(false);
+    setView('admin');
+  };
+
+  const handleLogout = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setAdminUser(null);
+    setView('store');
+  };
+
+  const filtered = products.filter(p => {
+    const matchCat = activeCategory === 'all' || p.category === activeCategory;
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  if (view === 'admin' && adminUser) {
+    return (
+      <>
+        <nav className="nav">
+          <div className="nav-logo">
+            <div className="logo-icon">⚡</div>
+            ROBOTECH <span style={{color:'var(--orange)',marginLeft:4}}>FRACTAL</span>
+          </div>
+          <div className="nav-links">
+            <button className="nav-link" onClick={() => setView('store')}>← Volver a la Tienda</button>
+          </div>
+        </nav>
+        <AdminPanel user={adminUser} products={products} onLogout={handleLogout} onRefresh={fetchProducts} />
+        {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLogin={handleLogin} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* NAV */}
+      <nav className="nav">
+        <div className="nav-logo">
+          <div className="logo-icon">⚡</div>
+          ROBOTECH <span style={{color:'var(--orange)',marginLeft:4}}>FRACTAL</span>
+        </div>
+        <div className="nav-links">
+          <button className="nav-link" onClick={() => document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})}>Productos</button>
+          <button className="nav-link" onClick={() => document.getElementById('info')?.scrollIntoView({behavior:'smooth'})}>Envíos & Pagos</button>
+          <button className="nav-link" onClick={() => document.getElementById('contacto')?.scrollIntoView({behavior:'smooth'})}>Contacto</button>
+        </div>
+        <button className="btn-login" onClick={() => setShowLogin(true)}>
+          <span>⬡ ADMIN</span>
+        </button>
+      </nav>
+
+      {/* HERO */}
+      <section className="hero">
+        <div className="hero-grid"></div>
+        {/* Decorative hex */}
+        <div style={{position:'absolute',right:'5%',top:'20%',width:'300px',height:'300px',opacity:0.06,fontSize:'300px',lineHeight:1,pointerEvents:'none',userSelect:'none'}}>⬡</div>
+        <div style={{position:'absolute',left:'3%',bottom:'15%',width:'200px',height:'200px',opacity:0.04,fontSize:'200px',lineHeight:1,pointerEvents:'none',userSelect:'none'}}>⬡</div>
+
+        <div className="hero-content">
+          <div className="hero-badge">
+            <span className="badge-dot"></span>
+            COMPONENTES ELECTRÓNICOS · ROBÓTICA · COMPUTACIÓN
+          </div>
+          <h1 className="hero-title">
+            LA TIENDA TECH<br/>
+            <span className="glow">DEL FUTURO</span>
+            <span className="fractal">FRACTAL STORE</span>
+          </h1>
+          <p className="hero-sub">
+            Raspberry Pi, Arduino, STM32, Sensores, Motores, Robots y mucho más.<br/>
+            <strong>Envíos a todo el país.</strong> Stock real y actualizado.
+          </p>
+          <div className="hero-cta">
+            <button className="btn-primary" onClick={() => document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})}>
+              EXPLORAR PRODUCTOS
+            </button>
+            <button className="btn-secondary" onClick={() => document.getElementById('info')?.scrollIntoView({behavior:'smooth'})}>
+              ENVÍOS & PAGOS
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* STATS */}
+      <div className="stats-bar">
+        <div className="stat-item"><span className="stat-num">+500</span><span className="stat-label">Productos</span></div>
+        <div className="stat-item"><span className="stat-num">100%</span><span className="stat-label">País</span></div>
+        <div className="stat-item"><span className="stat-num">2</span><span className="stat-label">Formas de Pago</span></div>
+        <div className="stat-item"><span className="stat-num">24hs</span><span className="stat-label">Despacho</span></div>
+      </div>
+
+      {/* PRODUCTS */}
+      <section id="productos" className="section">
+        <div className="section-header">
+          <span className="section-tag">Catálogo completo</span>
+          <h2 className="section-title">NUESTROS <em>PRODUCTOS</em></h2>
+        </div>
+
+        {/* Search */}
+        <div style={{marginBottom:24,display:'flex',gap:12}}>
+          <input
+            className="form-input" style={{maxWidth:360,fontFamily:'Rajdhani,sans-serif'}}
+            placeholder="🔍  Buscar productos..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Categories */}
+        <div className="categories-grid" style={{marginBottom:36}}>
+          {CATEGORIES.map(cat => (
+            <div
+              key={cat.id}
+              className={`cat-card${activeCategory===cat.id?' active':''}`}
+              onClick={() => setActiveCategory(cat.id)}
+            >
+              <span className="cat-icon">{cat.icon}</span>
+              <span className="cat-name">{cat.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Grid */}
+        {loading
+          ? <div className="loader"><div className="loader-dot"></div><div className="loader-dot"></div><div className="loader-dot"></div></div>
+          : filtered.length === 0
+            ? <div style={{textAlign:'center',padding:'60px',color:'var(--muted)',fontFamily:'Share Tech Mono,monospace'}}>
+                // NO_RESULTS_FOUND — Intenta otra búsqueda o categoría
+              </div>
+            : <div className="products-grid">
+                {filtered.map(p => <ProductCard key={p.id} product={p} />)}
+              </div>
+        }
+      </section>
+
+      {/* INFO */}
+      <section id="info" style={{background:'rgba(0,229,255,0.02)',borderTop:'1px solid var(--glass-border)',borderBottom:'1px solid var(--glass-border)'}}>
+        <div className="section" style={{paddingTop:60,paddingBottom:60}}>
+          <div className="section-header">
+            <span className="section-tag">Información importante</span>
+            <h2 className="section-title">ENVÍOS & <em>FORMAS DE PAGO</em></h2>
+          </div>
+          <div className="info-grid">
+            <div className="info-card">
+              <span className="info-card-icon">🚀</span>
+              <div className="info-card-title">ENVÍOS A TODO EL PAÍS</div>
+              <div className="info-card-text">
+                Despachamos por <strong>OCA, Andreani y Correo Argentino</strong> a todo el territorio nacional. El costo de envío se calcula según destino y peso. Tiempo estimado: <strong>2 a 7 días hábiles</strong> según ubicación.
+              </div>
+            </div>
+            <div className="info-card">
+              <span className="info-card-icon">💳</span>
+              <div className="info-card-title">FORMAS DE PAGO</div>
+              <div className="info-card-text">
+                Aceptamos únicamente:
+                <br/><br/>
+                <span className="tag-pill">🏦 Transferencia Bancaria</span>
+                <span className="tag-pill">💵 Efectivo</span>
+                <br/><br/>
+                Los datos de cuenta se comparten al confirmar el pedido vía WhatsApp o email.
+              </div>
+            </div>
+            <div className="info-card">
+              <span className="info-card-icon">📦</span>
+              <div className="info-card-title">¿CÓMO COMPRAR?</div>
+              <div className="info-card-text">
+                <strong>1.</strong> Elegí tus productos del catálogo.<br/>
+                <strong>2.</strong> Contactanos por WhatsApp o email con el detalle.<br/>
+                <strong>3.</strong> Confirmamos stock y te enviamos los datos de pago.<br/>
+                <strong>4.</strong> Pagás y despachamos al instante.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contacto" className="section">
+        <div className="section-header">
+          <span className="section-tag">Contacto directo</span>
+          <h2 className="section-title">HABLEMOS <em>HOY</em></h2>
+        </div>
+        <div className="info-grid" style={{maxWidth:700}}>
+          <div className="info-card" style={{textAlign:'center'}}>
+            <span className="info-card-icon">📱</span>
+            <div className="info-card-title">WHATSAPP</div>
+            <div className="info-card-text" style={{color:'var(--green)',fontSize:'1.1rem',fontWeight:700}}>
+              +54 9 XXX XXX XXXX
+            </div>
+          </div>
+          <div className="info-card" style={{textAlign:'center'}}>
+            <span className="info-card-icon">✉️</span>
+            <div className="info-card-title">EMAIL</div>
+            <div className="info-card-text" style={{color:'var(--cyan)',fontSize:'1rem',fontWeight:600}}>
+              info@robotechfractal.com
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer>
+        <div className="footer-logo">⚡ ROBOTECH STORE FRACTAL</div>
+        <div className="footer-text">
+          Tienda de electrónica, robótica y computación · Envíos a todo el país<br/>
+          <span style={{color:'var(--glass-border)'}}>── ── ──</span>
+        </div>
+        <div style={{marginTop:20,fontFamily:'Share Tech Mono,monospace',fontSize:'0.65rem',color:'rgba(100,116,139,0.4)'}}>
+          SYS_STATUS: ONLINE · BUILD_2025 · POWERED_BY_FRACTAL_TECH
+        </div>
+      </footer>
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLogin={handleLogin} />}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
