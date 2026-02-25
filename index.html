@@ -536,15 +536,23 @@
   @keyframes loaderBounce{0%,100%{transform:translateY(0);opacity:0.4}50%{transform:translateY(-10px);opacity:1}}
 
   @media(max-width:768px) {
-    .nav { padding:0 16px; }
-    .nav-links { display:none; }
-    .hero { padding:100px 20px 60px; }
-    .section, .admin-panel { padding:60px 20px; }
-    .stats-bar { flex-wrap:wrap; }
-    .stat-item { flex:1 1 50%; border-right:none; border-bottom:1px solid var(--glass-border); }
-    .form-row, .form-row-3 { grid-template-columns:1fr; }
-    .theme-toggle span.label { display:none; }
-  }
+      .nav { padding:0 12px; }
+      .nav-links { display:none; }
+      .nav-right { gap:6px; }
+      .hero { padding:100px 20px 60px; }
+      .section, .admin-panel { padding:60px 20px; }
+      .stats-bar { flex-wrap:wrap; }
+      .stat-item { flex:1 1 50%; border-right:none; border-bottom:1px solid var(--glass-border); }
+      .form-row, .form-row-3 { grid-template-columns:1fr; }
+      .theme-toggle span.label { display:none; }
+      .theme-toggle { padding:7px 9px; }
+      .cart-btn { padding:7px 10px; }
+      .cart-count-label { display:none; }
+      .btn-login { padding:7px 10px; font-size:0.62rem; letter-spacing:0.05em; }
+      .btn-login span::before { content:'⬡'; }
+      .btn-login span { font-size:0; }
+      .btn-login span::before { font-size:1rem; }
+    }
 </style>
 </head>
 <body>
