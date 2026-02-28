@@ -87,6 +87,15 @@ body.dark-mode .cart-btn:hover{background:rgba(0,229,255,.1)}
 .btn-login .admin-icon{display:inline;font-size:1rem}
 .btn-login .admin-label{display:inline}
 
+/* ── LOGIN CARD (contacto section) ── */
+.login-contact-card{background:var(--card-bg);border:1px solid var(--glass-border);padding:28px;position:relative;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));box-shadow:var(--shadow);text-align:center;transition:all .3s}
+.login-contact-card:hover{border-color:var(--cyan);box-shadow:0 8px 30px var(--glow-cyan)}
+.login-contact-card::after{content:'';position:absolute;top:0;right:0;width:14px;height:14px;background:var(--cyan);clip-path:polygon(0 0,100% 0,100% 100%);opacity:.5}
+.btn-login-card{width:100%;background:transparent;border:1px solid var(--cyan);color:var(--cyan);padding:12px 20px;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-login-card::before{content:'';position:absolute;inset:0;background:var(--cyan);transform:translateX(-100%);transition:transform .3s}
+.btn-login-card:hover::before{transform:translateX(0)}
+.btn-login-card:hover{color:var(--surface)}
+.btn-login-card span{position:relative;z-index:1}
 
 /* ── NOTIFICATION TOAST ── */
 .notif-container{position:fixed;top:80px;right:20px;z-index:5000;display:flex;flex-direction:column;gap:10px;pointer-events:none}
@@ -803,7 +812,6 @@ function ProductModal({product,onClose,onSave}){
   
   const handleImageFile=async(e)=>{
     const file=e.target.files[0];if(!file)return;
-    // Try Supabase Storage first
     setUploading(true);
     const ext=file.name.split('.').pop();
     const fname=`${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -812,7 +820,6 @@ function ProductModal({product,onClose,onSave}){
       const{data:{publicUrl}}=supabase.storage.from('product-images').getPublicUrl(fname);
       setImgPreview(publicUrl);set('image_url',publicUrl);
     } else {
-      // Fallback to base64
       const reader=new FileReader();
       reader.onload=(ev)=>{setImgPreview(ev.target.result);set('image_url',ev.target.result)};
       reader.readAsDataURL(file);
@@ -934,7 +941,6 @@ function AdminPanel({user,products:pp,orders:po,onLogout,onRefresh}){
     setLo(prev=>prev.filter(o=>o.id!==oid));
     const{error}=await supabase.from('orders').delete().eq('id',oid);
     if(error){
-      // Si falla el borrado en Supabase, restaurar el item en UI
       console.error('Error borrando orden:',error);
       setLo(prev=>[...prev,order].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)));
       alert('ERROR al borrar. Verificá tu conexión o sesión de admin.');
@@ -1124,10 +1130,8 @@ function App(){
   const [notifs,setNotifs]=React.useState([]);
   const realtimeRef=React.useRef(null);
 
-  // Persist cart
   React.useEffect(()=>{try{localStorage.setItem('rf-cart',JSON.stringify(cart))}catch{}},[cart]);
 
-  // Debounce search
   React.useEffect(()=>{
     const t=setTimeout(()=>setSearch(searchInput),280);
     return()=>clearTimeout(t);
@@ -1135,8 +1139,6 @@ function App(){
 
   const fetchProducts=React.useCallback(async(forAdmin=false)=>{
     setLoading(true);
-    // Admin autenticado lee 'products' (tiene price_cost para calcular ganancia)
-    // Tienda pública lee 'products_public' (vista sin price_cost, protege márgenes)
     const table = forAdmin ? 'products' : 'products_public';
     const{data,error}=await supabase.from(table).select('*').order('created_at',{ascending:false});
     if(!error&&data)setProducts(data);
@@ -1155,7 +1157,6 @@ function App(){
   },[]);
   React.useEffect(()=>{if(adminUser)fetchOrders()},[adminUser,fetchOrders]);
 
-  // ── REALTIME: notificaciones de nuevas órdenes (solo admin) ──
   React.useEffect(()=>{
     if(!adminUser)return;
     const ch=supabase.channel('orders-realtime')
@@ -1172,7 +1173,6 @@ function App(){
     return()=>{supabase.removeChannel(ch)};
   },[adminUser]);
 
-  // Cart logic
   const addToCart=(product)=>setCart(c=>{const ex=c.find(i=>i.product.id===product.id);if(ex)return c.map(i=>i.product.id===product.id?{...i,qty:Math.min(i.qty+1,product.stock)}:i);return[...c,{product,qty:1}]});
   const changeQty=(id,qty)=>{if(qty<=0){setCart(c=>c.filter(i=>i.product.id!==id));return}setCart(c=>c.map(i=>i.product.id===id?{...i,qty}:i))};
   const removeFromCart=(id)=>setCart(c=>c.filter(i=>i.product.id!==id));
@@ -1201,7 +1201,6 @@ function App(){
 
   const promoCount=products.filter(p=>p.on_promo&&p.promo_price).length;
 
-  // ── ADMIN VIEW ──
   if(view==='admin'&&adminUser)return(
     <>
       <nav className="nav">
@@ -1214,7 +1213,6 @@ function App(){
     </>
   );
 
-  // ── STORE VIEW ──
   return(
     <>
       <nav className="nav">
@@ -1276,7 +1274,6 @@ function App(){
               </h2>
             </div>
 
-            {/* Sección pills */}
             <div style={{display:'flex',gap:7,marginBottom:20,flexWrap:'wrap'}}>
               {SECTIONS.map(s=>(
                 <button key={s.id} onClick={()=>{setActiveSection(s.id);setActiveCategory('all')}} style={{padding:'7px 16px',fontFamily:'Share Tech Mono,monospace',fontSize:'.72rem',letterSpacing:'.1em',cursor:'pointer',transition:'.3s',border:'1px solid',background:activeSection===s.id?'var(--cyan)':'var(--glass)',borderColor:activeSection===s.id?'var(--cyan)':'var(--glass-border)',color:activeSection===s.id?'#fff':'var(--muted)',fontWeight:activeSection===s.id?700:400,clipPath:'polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))'}}>
@@ -1285,7 +1282,6 @@ function App(){
               ))}
             </div>
 
-            {/* Search + promo filter */}
             <div style={{display:'flex',gap:12,alignItems:'flex-start',flexWrap:'wrap',marginBottom:8}}>
               <div className="search-wrap">
                 <input placeholder="🔍  Buscar productos..." value={searchInput} onChange={e=>setSearchInput(e.target.value)}/>
@@ -1300,7 +1296,6 @@ function App(){
               </div>
             </div>
 
-            {/* Categories carousel */}
             <div className="cat-scroll-wrap">
               <div className="categories-grid">
                 {visibleCats.map(cat=>(
@@ -1342,9 +1337,29 @@ function App(){
           {/* CONTACT */}
           <section id="contacto" className="section">
             <div className="section-header"><span className="section-tag">Contacto directo</span><h2 className="section-title">HABLEMOS <em>HOY</em></h2></div>
-            <div className="info-grid" style={{maxWidth:680}}>
-              <div className="info-card" style={{textAlign:'center'}}><span className="info-card-icon">📱</span><div className="info-card-title">WHATSAPP</div><a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noreferrer" style={{display:'block',color:'var(--green)',fontSize:'1.15rem',fontWeight:700,textDecoration:'none',marginTop:7}}>+593 990 163 527</a></div>
-              <div className="info-card" style={{textAlign:'center'}}><span className="info-card-icon">✉️</span><div className="info-card-title">EMAIL</div><div style={{color:'var(--cyan)',fontSize:'1rem',fontWeight:600,marginTop:7}}>info@robotechfractal.com</div></div>
+            <div className="info-grid" style={{maxWidth:900}}>
+              <div className="info-card" style={{textAlign:'center'}}>
+                <span className="info-card-icon">📱</span>
+                <div className="info-card-title">WHATSAPP</div>
+                <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noreferrer" style={{display:'block',color:'var(--green)',fontSize:'1.15rem',fontWeight:700,textDecoration:'none',marginTop:7}}>+593 990 163 527</a>
+              </div>
+              <div className="info-card" style={{textAlign:'center'}}>
+                <span className="info-card-icon">✉️</span>
+                <div className="info-card-title">EMAIL</div>
+                <div style={{color:'var(--cyan)',fontSize:'1rem',fontWeight:600,marginTop:7}}>info@robotechfractal.com</div>
+              </div>
+
+              {/* ── LOGIN CARD ── */}
+              <div className="login-contact-card">
+                <span className="info-card-icon" style={{display:'block',fontSize:'1.9rem',marginBottom:14}}>⬡</span>
+                <div className="info-card-title" style={{fontFamily:'Orbitron,sans-serif',fontSize:'.88rem',fontWeight:700,color:'var(--cyan)',marginBottom:9,letterSpacing:'.08em'}}>PANEL ADMIN</div>
+                <div className="info-card-text" style={{fontSize:'.88rem',color:'var(--muted)',lineHeight:1.7}}>
+                  Acceso exclusivo para administradores de la tienda.
+                </div>
+                <button className="btn-login-card" onClick={()=>setShowLogin(true)}>
+                  <span>⬡</span><span>INGRESAR AL PANEL</span>
+                </button>
+              </div>
             </div>
           </section>
 
